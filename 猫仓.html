@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>🐱 猫仓</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:linear-gradient(135deg,#FFF5E6 0%,#FFE4C4 50%,#FFDAB9 100%);min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:12px;overflow-x:hidden}
+#app{max-width:420px;width:100%;margin:0 auto}
+.header{text-align:center;padding:16px 0 8px}
+.header h1{font-size:28px;color:#8B4513;text-shadow:1px 1px 2px rgba(139,69,19,0.2)}
+.header .cat-name-wrap{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:2px}
+.header .cat-name-wrap .cat-name{font-size:15px;color:#A0522D;font-weight:600;cursor:pointer;border-bottom:2px dotted #DBA979;padding:0 2px;transition:color 0.2s}
+.header .cat-name-wrap .cat-name:hover{color:#8B4513}
+.header .cat-name-wrap .rename-btn{background:none;border:none;cursor:pointer;font-size:14px;padding:2px;color:#C49A6C;transition:color 0.2s;touch-action:manipulation}
+.header .cat-name-wrap .rename-btn:hover{color:#8B4513}
+.header .cat-name-wrap .rename-btn:active{transform:scale(0.9)}
+.header p{font-size:13px;color:#A0522D;margin-top:2px}
+.canvas-wrap{position:relative;background:linear-gradient(180deg,#FFF8F0 0%,#FFEED6 100%);border-radius:24px;box-shadow:0 4px 20px rgba(139,69,19,0.15);padding:12px;margin:8px 0;overflow:hidden}
+canvas#catCanvas{display:block;width:100%;height:auto;aspect-ratio:1;border-radius:16px;background:#FFFBF5;touch-action:none}
+canvas#particleCanvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:999}
+#audioHint{position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.9);border:1px solid #FFDAB9;border-radius:20px;padding:6px 14px;font-size:12px;color:#8B4513;cursor:pointer;z-index:10;transition:all 0.3s}
+#audioHint.activated{background:#E8F5E9;border-color:#81C784;color:#2E7D32}
+.stats{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap}
+.stat-card{flex:1;min-width:100px;background:rgba(255,255,255,0.85);border-radius:14px;padding:10px 12px;box-shadow:0 2px 8px rgba(139,69,19,0.08);text-align:center}
+.stat-card .label{font-size:11px;color:#A0522D;margin-bottom:4px}
+.stat-card .value{font-size:16px;font-weight:700;color:#5D4037}
+.stat-bar{height:6px;background:#F5E6D3;border-radius:3px;margin-top:4px;overflow:hidden}
+.stat-bar .fill{height:100%;border-radius:3px;transition:width 0.4s ease}
+.fill-hunger{background:linear-gradient(90deg,#FF8A65,#FF5722)}
+.fill-happiness{background:linear-gradient(90deg,#FFD54F,#FFB300)}
+.fill-energy{background:linear-gradient(90deg,#81C784,#4CAF50)}
+.mood-display{text-align:center;font-size:15px;color:#8B4513;padding:4px 0;font-weight:500}
+.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0}
+.actions .btn{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px;border:none;border-radius:14px;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s;background:rgba(255,255,255,0.85);color:#5D4037;box-shadow:0 2px 6px rgba(139,69,19,0.1);touch-action:manipulation;user-select:none}
+.actions .btn:active{transform:scale(0.93);box-shadow:0 1px 3px rgba(139,69,19,0.15)}
+.actions .btn .icon{font-size:22px;margin-bottom:2px}
+.btn-feed{background:rgba(255,138,101,0.2)}
+.btn-play{background:rgba(255,213,79,0.2)}
+.btn-sleep{background:rgba(129,199,132,0.2)}
+.btn-yarn{background:rgba(186,104,200,0.15)}
+.btn-herb{background:rgba(129,199,132,0.15)}
+.btn-work{background:rgba(100,181,246,0.15)}
+.btn-back{background:rgba(239,83,80,0.15);display:none}
+.btn-share{background:rgba(255,183,77,0.2)}
+#workIndicator{position:absolute;top:16px;left:16px;background:rgba(100,181,246,0.9);color:#fff;border-radius:20px;padding:4px 12px;font-size:11px;display:none;z-index:10;align-items:center;gap:4px}
+#workIndicator.show{display:flex}
+.panel{background:rgba(255,255,255,0.85);border-radius:16px;margin:8px 0;box-shadow:0 2px 10px rgba(139,69,19,0.08);overflow:hidden}
+.panel-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;cursor:pointer;font-size:14px;font-weight:600;color:#5D4037;user-select:none}
+.panel-header .arrow{transition:transform 0.3s;font-size:12px}
+.panel-header .arrow.open{transform:rotate(180deg)}
+.panel-body{max-height:0;overflow:hidden;transition:max-height 0.35s ease;padding:0 16px}
+.panel-body.open{max-height:600px;padding:0 16px 14px}
+.custom-row{display:flex;align-items:center;gap:10px;margin:8px 0}
+.custom-row label{font-size:13px;color:#8B4513;min-width:56px}
+.custom-row select,.custom-row input[type="color"]{flex:1;padding:6px 10px;border:1px solid #FFDAB9;border-radius:10px;font-size:13px;background:#FFFBF5;color:#5D4037;outline:none}
+.custom-row select{appearance:none;background:#FFFBF5 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238B4513'/%3E%3C/svg%3E") no-repeat right 10px center;padding-right:28px}
+.custom-row input[type="color"]{height:38px;padding:2px;cursor:pointer}
+.diary-body textarea{width:100%;height:80px;border:1px solid #FFDAB9;border-radius:10px;padding:10px;font-size:13px;resize:vertical;background:#FFFBF5;color:#5D4037;outline:none;font-family:inherit}
+.diary-body textarea:focus{border-color:#DBA979}
+.diary-actions{display:flex;gap:8px;margin-top:8px}
+.diary-actions button{flex:1;padding:8px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.15s;touch-action:manipulation}
+.diary-actions button:active{transform:scale(0.95)}
+#diarySave{background:#FFE0B2;color:#8B4513}
+#diaryShare{background:#B3E5FC;color:#01579B}
+.diary-date{font-size:12px;color:#A0522D;margin-bottom:6px}
+.share-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity 0.3s;padding:20px}
+.share-overlay.show{opacity:1;pointer-events:auto}
+.share-card{background:#FFFBF5;border-radius:20px;padding:24px;max-width:340px;width:100%;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,0.2)}
+.share-card .emoji{font-size:48px;margin-bottom:8px}
+.share-card .text{font-size:14px;color:#5D4037;line-height:1.6;white-space:pre-wrap;text-align:left;margin:12px 0}
+.share-card .close-btn{margin-top:12px;padding:8px 24px;border:none;border-radius:12px;background:#FFE0B2;color:#8B4513;font-size:14px;font-weight:600;cursor:pointer;touch-action:manipulation}
+.share-card .close-btn:active{transform:scale(0.95)}
+.offline-notice{text-align:center;font-size:12px;color:#A0522D;padding:4px 0;opacity:0.7}
+@media(max-width:380px){
+  .actions{grid-template-columns:repeat(4,1fr);gap:5px}
+  .actions .btn{padding:8px 2px;font-size:11px}
+  .actions .btn .icon{font-size:18px}
+  .stat-card{padding:8px}
+  .header h1{font-size:24px}
+}
+@media(min-width:500px){
+  #app{max-width:460px}
+  .actions .btn{padding:12px 8px;font-size:13px}
+  .actions .btn .icon{font-size:26px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <h1>🐱 猫仓</h1>
+    <div class="cat-name-wrap">
+      <span class="cat-name" id="catNameDisplay">咪咪</span>
+      <button class="rename-btn" id="renameBtn" title="改名">✏️</button>
+    </div>
+    <p id="subtitleText">陪伴你的像素猫咪</p>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="catCanvas" width="512" height="512"></canvas>
+    <div id="audioHint">🔇 点击激活喵声</div>
+    <div id="workIndicator">💼 工作中</div>
+  </div>
+
+  <div class="mood-display" id="moodText">😊 心情不错</div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="label">🍖 饥饿</div>
+      <div class="value" id="hungerValue">50</div>
+      <div class="stat-bar"><div class="fill fill-hunger" id="hungerBar" style="width:50%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="label">🎉 快乐</div>
+      <div class="value" id="happinessValue">50</div>
+      <div class="stat-bar"><div class="fill fill-happiness" id="happinessBar" style="width:50%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="label">⚡ 精力</div>
+      <div class="value" id="energyValue">50</div>
+      <div class="stat-bar"><div class="fill fill-energy" id="energyBar" style="width:50%"></div></div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-feed" id="btnFeed"><span class="icon">🍖</span>喂食</button>
+    <button class="btn btn-play" id="btnPlay"><span class="icon">🎾</span>玩耍</button>
+    <button class="btn btn-sleep" id="btnSleep"><span class="icon">😴</span>睡觉</button>
+    <button class="btn btn-yarn" id="btnYarn"><span class="icon">🧶</span>毛线球</button>
+    <button class="btn btn-herb" id="btnHerb"><span class="icon">🌿</span>猫薄荷</button>
+    <button class="btn btn-work" id="btnWork"><span class="icon">💼</span>工作</button>
+    <button class="btn btn-back" id="btnBack"><span class="icon">🏠</span>回家</button>
+    <button class="btn btn-share" id="btnShare"><span class="icon">📮</span>分享</button>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header" id="panelToggle"><span>🎨 自定义外观</span><span class="arrow" id="panelArrow">▼</span></div>
+    <div class="panel-body" id="panelBody">
+      <div class="custom-row">
+        <label for="breedSelect">品种</label>
+        <select id="breedSelect">
+          <option value="orange">🐈 橘猫</option>
+          <option value="black">🐈⬛ 黑猫</option>
+          <option value="tabby">🐅 狸花猫</option>
+          <option value="white">🐱 白猫</option>
+          <option value="cow">🐄 奶牛猫</option>
+          <option value="ragdoll">🐱 布偶猫</option>
+          <option value="siamese">🐱 暹罗猫</option>
+          <option value="british">🐱 英国短毛猫</option>
+          <option value="american">🐱 美国短毛猫</option>
+          <option value="calico">🐱 三花猫</option>
+          <option value="tortie">🐱 玳瑁猫</option>
+          <option value="sphynx">🐱 无毛猫</option>
+          <option value="goldensh">🐱 金渐层</option>
+        </select>
+      </div>
+      <div class="custom-row"><label for="furColor">主毛色</label><input type="color" id="furColor" value="#F4A460"></div>
+      <div class="custom-row"><label for="eyeColor">眼睛色</label><input type="color" id="eyeColor" value="#6B8E23"></div>
+      <div class="custom-row" id="heterochromiaRow" style="display:none;"><label>右眼色</label><input type="color" id="eyeColor2" value="#4A90D9"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header" id="diaryToggle"><span>📖 思念日记</span><span class="arrow" id="diaryArrow">▼</span></div>
+    <div class="panel-body diary-body" id="diaryBody">
+      <div class="diary-date" id="diaryDate"></div>
+      <textarea id="diaryText" placeholder="今天想对猫咪说什么…"></textarea>
+      <div class="diary-actions">
+        <button id="diarySave">💾 保存</button>
+        <button id="diaryShare">📮 分享心情</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="offline-notice" id="offlineNotice"></div>
+</div>
+
+<canvas id="particleCanvas"></canvas>
+
+<div class="share-overlay" id="shareOverlay">
+  <div class="share-card">
+    <div class="emoji" id="shareCardEmoji">🐱</div>
+    <div class="text" id="shareCardText"></div>
+    <button class="close-btn" id="closeShareCard">关闭</button>
+  </div>
+</div>
+
+<script>
+// ==================== 常量 ====================
+var CANVAS_SIZE = 512;
+var CELL = 8;
+var GRID = 64;
+var canvas = document.getElementById('catCanvas');
+var ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+// ==================== DOM 引用 ====================
+var hungerBar = document.getElementById('hungerBar');
+var happinessBar = document.getElementById('happinessBar');
+var energyBar = document.getElementById('energyBar');
+var hungerValue = document.getElementById('hungerValue');
+var happinessValue = document.getElementById('happinessValue');
+var energyValue = document.getElementById('energyValue');
+var moodText = document.getElementById('moodText');
+var breedSelect = document.getElementById('breedSelect');
+var furColorInput = document.getElementById('furColor');
+var eyeColorInput = document.getElementById('eyeColor');
+var eyeColor2Input = document.getElementById('eyeColor2');
+var heterochromiaRow = document.getElementById('heterochromiaRow');
+var btnFeed = document.getElementById('btnFeed');
+var btnPlay = document.getElementById('btnPlay');
+var btnSleep = document.getElementById('btnSleep');
+var btnYarn = document.getElementById('btnYarn');
+var btnHerb = document.getElementById('btnHerb');
+var btnWork = document.getElementById('btnWork');
+var btnBack = document.getElementById('btnBack');
+var btnShare = document.getElementById('btnShare');
+var panelToggle = document.getElementById('panelToggle');
+var panelBody = document.getElementById('panelBody');
+var panelArrow = document.getElementById('panelArrow');
+var diaryToggle = document.getElementById('diaryToggle');
+var diaryBody = document.getElementById('diaryBody');
+var diaryArrow = document.getElementById('diaryArrow');
+var diaryDate = document.getElementById('diaryDate');
+var diaryText = document.getElementById('diaryText');
+var diarySave = document.getElementById('diarySave');
+var diaryShare = document.getElementById('diaryShare');
+var shareOverlay = document.getElementById('shareOverlay');
+var shareCardText = document.getElementById('shareCardText');
+var shareCardEmoji = document.getElementById('shareCardEmoji');
+var closeShareCard = document.getElementById('closeShareCard');
+var audioHint = document.getElementById('audioHint');
+var workIndicator = document.getElementById('workIndicator');
+var offlineNotice = document.getElementById('offlineNotice');
+var pCanvas = document.getElementById('particleCanvas');
+var pCtx = pCanvas.getContext('2d');
+
+// ==================== 品种配置 ====================
+var BREED_CONFIG = {
+  orange:  { name:'橘猫', defaultFur:'#F4A460', defaultEye:'#6B8E23', earType:'pointy', hasStripes:true, hasSpots:false, heterochromia:false },
+  black:   { name:'黑猫', defaultFur:'#2D2D2D', defaultEye:'#FFD700', earType:'pointy', hasStripes:false, hasSpots:false, heterochromia:false },
+  tabby:   { name:'狸花猫', defaultFur:'#8B7355', defaultEye:'#6B8E23', earType:'pointy', hasStripes:true, hasSpots:false, heterochromia:false },
+  white:   { name:'白猫', defaultFur:'#F5F5F5', defaultEye:'#4A90D9', earType:'pointy', hasStripes:false, hasSpots:false, heterochromia:true },
+  cow:     { name:'奶牛猫', defaultFur:'#F5F5F5', defaultEye:'#6B8E23', earType:'round', hasStripes:false, hasSpots:true, heterochromia:false },
+  ragdoll: { name:'布偶猫', defaultFur:'#F5E1D1', defaultEye:'#5DADE2', earType:'pointy', hasStripes:false, hasSpots:false, heterochromia:false },
+  siamese: { name:'暹罗猫', defaultFur:'#F8E6C0', defaultEye:'#3498DB', earType:'pointy', hasStripes:false, hasSpots:false, heterochromia:false },
+  british: { name:'英国短毛猫', defaultFur:'#8E9EB5', defaultEye:'#D4A017', earType:'round', hasStripes:false, hasSpots:false, heterochromia:false },
+  american:{ name:'美国短毛猫', defaultFur:'#C0A080', defaultEye:'#2ECC71', earType:'pointy', hasStripes:true, hasSpots:false, heterochromia:false },
+  calico:  { name:'三花猫', defaultFur:'#FFFFFF', defaultEye:'#F39C12', earType:'pointy', hasStripes:false, hasSpots:true, heterochromia:false },
+  tortie:  { name:'玳瑁猫', defaultFur:'#2C2C2C', defaultEye:'#E67E22', earType:'pointy', hasStripes:false, hasSpots:false, heterochromia:false },
+  sphynx:  { name:'无毛猫', defaultFur:'#E0AC69', defaultEye:'#27AE60', earType:'big', hasStripes:false, hasSpots:false, heterochromia:false },
+  goldensh:{ name:'金渐层', defaultFur:'#D4AF37', defaultEye:'#6C9E3F', earType:'pointy', hasStripes:false, hasSpots:false, heterochromia:false }
+};
+
+// ==================== 状态 ====================
+var state = {
+  breed:'orange', furColor:'#F4A460', eyeColor:'#6B8E23', eyeColor2:null,
+  hunger:50, happiness:50, energy:50,
+  workMode:false, herbActive:false, herbTimer:null,
+  catName:'咪咪'
+};
+var particles = [];
+var breathOffset = 0, earTwitch = 0, tailSway = 0;
+var lastAnimTime = 0, animElapsed = 0;
+var decayTimer = null;
+var audioCtx = null, audioActivated = false;
+
+// ==================== 动作状态 (互动反馈) ====================
+var actionState = { type: null, progress: 0, active: false };
+
+function setAction(type, duration) {
+  actionState.type = type;
+  actionState.active = true;
+  actionState.progress = 0;
+  setTimeout(function() {
+    actionState.active = false;
+    actionState.type = null;
+    actionState.progress = 0;
+  }, duration);
+}
+
+// ==================== 颜色工具 ====================
+function lighten(c, amt) {
+  var r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16);
+  r=Math.min(255,r+amt);g=Math.min(255,g+amt);b=Math.min(255,b+amt);
+  return '#'+r.toString(16).padStart(2,'0')+g.toString(16).padStart(2,'0')+b.toString(16).padStart(2,'0');
+}
+function darken(c, amt) {
+  var r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16);
+  r=Math.max(0,r-amt);g=Math.max(0,g-amt);b=Math.max(0,b-amt);
+  return '#'+r.toString(16).padStart(2,'0')+g.toString(16).padStart(2,'0')+b.toString(16).padStart(2,'0');
+}
+
+// ==================== 绘制工具 ====================
+function px(gx, gy, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(gx*CELL, gy*CELL, CELL, CELL);
+}
+function rect(gx, gy, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(gx*CELL, gy*CELL, w*CELL, h*CELL);
+}
+
+// ==================== 表情系统 ====================
+function getExpression() {
+  var h = state.hunger, p = state.happiness, e = state.energy, n = state.catName;
+  if (state.herbActive) return {eyes:'star', brows:'up', mouth:'open', tongue:true, mood:'😵 ' + n + '飘飘然'};
+  if (h >= 80) return {eyes:'sad', brows:'up', mouth:'sad', tongue:false, mood:'😣 ' + n + '好饿…'};
+  if (e <= 15) return {eyes:'sleepy', brows:'down', mouth:'normal', tongue:false, mood:'😴 ' + n + '好困…'};
+  if (p >= 70 && h <= 30) return {eyes:'happy', brows:'up', mouth:'happy', tongue:false, mood:'😊 ' + n + '很开心'};
+  if (p <= 20) return {eyes:'sad', brows:'down', mouth:'sad', tongue:false, mood:'😢 ' + n + '好孤单'};
+  if (h >= 50) return {eyes:'dazed', brows:'down', mouth:'normal', tongue:false, mood:'😕 ' + n + '有点饿'};
+  return {eyes:'normal', brows:'normal', mouth:'normal', tongue:false, mood:'😌 ' + n + '心情不错'};
+}
+
+// ==================== 主绘制函数 - 趴着的猫 (可爱版) ====================
+function drawCat() {
+  var fur = state.furColor;
+  var eye = state.eyeColor;
+  var eye2 = state.eyeColor2 || eye;
+  var breed = BREED_CONFIG[state.breed];
+  var expr = getExpression();
+  var bOff = Math.round(breathOffset);
+  var eTw = earTwitch;
+  var tSw = tailSway;
+
+  // 动作状态变量
+  var act = actionState;
+  var mouthOpen = (act.type === 'feed' && act.active) || expr.mouth === 'open';
+  var headTilt = (act.type === 'feed' && act.active) ? -1 : 0;
+  var pawLunge = (act.type === 'play' && act.active) ? 2 : 0;
+  var sleepBigBreath = (act.type === 'sleep' && act.active) ? 1.5 : 1;
+  var headShake = (act.type === 'yarn' && act.active) ? Math.sin(animElapsed * 0.03) * 1.5 : 0;
+  var earUp = (act.type === 'yarn' && act.active) ? 1 : 0;
+  var headTremble = (act.type === 'herb' && act.active) ? (Math.random() * 0.8) : 0;
+
+  ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+  var furLight = lighten(fur, 40);
+  var furDark = darken(fur, 30);
+  var furDarker = darken(fur, 60);
+
+  // 头部偏移 (动作影响)
+  var headOffX = Math.round(headShake + headTremble);
+  var headOffY = headTilt;
+
+  // ==========================================
+  //  趴姿猫结构 (头部在左, 身体向右延伸)
+  //  网格坐标参考 (64x64 网格):
+  //    头部: (10-30, 17-35)  ← 增大2格
+  //    身体: (26-50, 22-34)
+  //    前爪: (16-26, 34-40)
+  //    后爪: (42-50, 34-40)
+  //    尾巴: (48-56, 24-32)
+  // ==========================================
+
+  // ---- 尾巴 (更卷翘) ----
+  var tailBaseX = 48 + Math.round(tSw);
+  var tailBaseY = 26;
+  rect(tailBaseX, tailBaseY, 6, 3, fur);
+  rect(tailBaseX + 5, tailBaseY - 1, 3, 2, fur);
+  rect(tailBaseX + 7, tailBaseY - 2, 2, 2, fur);
+  rect(tailBaseX + 8, tailBaseY - 3, 1, 1, fur);
+  // 尾巴向上卷曲
+  rect(tailBaseX + 6, tailBaseY - 3, 1, 1, fur);
+  rect(tailBaseX + 9, tailBaseY - 4, 1, 1, fur);
+  // 尾巴高光
+  rect(tailBaseX + 1, tailBaseY, 3, 1, furLight);
+  rect(tailBaseX + 6, tailBaseY - 2, 1, 1, furLight);
+
+  // ---- 身体 ----
+  // 主体 (圆润椭圆)
+  rect(26, 22, 24, 12, fur);
+  // 背部弧线
+  px(25, 23, fur); px(25, 24, fur); px(25, 25, fur);
+  px(25, 26, fur); px(25, 27, fur);
+  px(50, 23, fur); px(50, 24, fur); px(50, 25, fur);
+  px(50, 26, fur); px(50, 27, fur);
+  // 身体高光 (背部)
+  rect(28, 22, 20, 2, furLight);
+  rect(27, 23, 22, 1, furLight);
+  // 身体阴影 (腹部)
+  rect(27, 32, 22, 2, furDark);
+  rect(28, 31, 20, 1, furDark);
+  // 腹部边缘
+  px(26, 33, furDark); px(49, 33, furDark);
+  px(26, 34, furDarker); px(49, 34, furDarker);
+  // 毛绒感边缘 (亮色点缀)
+  px(24, 24, furLight); px(24, 26, furLight);
+  px(51, 24, furLight); px(51, 26, furLight);
+  px(24, 28, furDark); px(51, 28, furDark);
+
+  // ---- 后爪 ----
+  var hindColor = furDark;
+  rect(42, 34, 4, 3, hindColor);
+  rect(47, 34, 4, 3, hindColor);
+  rect(42, 33, 4, 1, fur);
+  rect(47, 33, 4, 1, fur);
+  // 后爪肉垫
+  px(43, 36, '#FFB6C1'); px(44, 36, '#FFB6C1');
+  px(48, 36, '#FFB6C1'); px(49, 36, '#FFB6C1');
+
+  // ---- 前爪 (玩耍时向前扑) ----
+  var foreColor = furDark;
+  var pawOff = pawLunge;
+  rect(17 + pawOff, 34, 4, 4, foreColor);
+  rect(22 + pawOff, 34, 4, 4, foreColor);
+  rect(17 + pawOff, 33, 4, 1, fur);
+  rect(22 + pawOff, 33, 4, 1, fur);
+  // 前爪肉垫
+  px(18 + pawOff, 37, '#FFB6C1'); px(19 + pawOff, 37, '#FFB6C1');
+  px(23 + pawOff, 37, '#FFB6C1'); px(24 + pawOff, 37, '#FFB6C1');
+
+  // ---- 头部 (Q版大头, 增大2格) ----
+  var hx = 10 + headOffX;
+  var hy = 17 + headOffY + Math.round(bOff * sleepBigBreath);
+  // 头部主体 (18x16)
+  rect(hx, hy, 18, 16, fur);
+  // 头部圆润边缘
+  px(hx - 1, hy + 2, fur); px(hx - 1, hy + 3, fur); px(hx - 1, hy + 4, fur); px(hx - 1, hy + 5, fur);
+  px(hx - 1, hy + 6, fur); px(hx - 1, hy + 7, fur); px(hx - 1, hy + 8, fur);
+  px(hx + 18, hy + 2, fur); px(hx + 18, hy + 3, fur); px(hx + 18, hy + 4, fur); px(hx + 18, hy + 5, fur);
+  px(hx + 18, hy + 6, fur); px(hx + 18, hy + 7, fur); px(hx + 18, hy + 8, fur);
+  // 头顶圆润
+  px(hx + 1, hy - 1, fur); px(hx + 2, hy - 1, fur); px(hx + 3, hy - 1, fur);
+  px(hx + 4, hy - 1, fur); px(hx + 5, hy - 1, fur); px(hx + 6, hy - 1, fur);
+  px(hx + 7, hy - 1, fur); px(hx + 8, hy - 1, fur); px(hx + 9, hy - 1, fur);
+  px(hx + 10, hy - 1, fur); px(hx + 11, hy - 1, fur); px(hx + 12, hy - 1, fur);
+  px(hx + 13, hy - 1, fur); px(hx + 14, hy - 1, fur); px(hx + 15, hy - 1, fur);
+  px(hx + 16, hy - 1, fur);
+  // 下巴
+  px(hx + 2, hy + 15, fur); px(hx + 3, hy + 15, fur); px(hx + 4, hy + 15, fur);
+  px(hx + 5, hy + 15, fur); px(hx + 6, hy + 15, fur); px(hx + 7, hy + 15, fur);
+  px(hx + 8, hy + 15, fur); px(hx + 9, hy + 15, fur); px(hx + 10, hy + 15, fur);
+  px(hx + 11, hy + 15, fur); px(hx + 12, hy + 15, fur); px(hx + 13, hy + 15, fur);
+  px(hx + 14, hy + 15, fur); px(hx + 15, hy + 15, fur);
+  // 头部高光
+  rect(hx + 2, hy + 1, 10, 2, furLight);
+  px(hx + 1, hy + 2, furLight); px(hx + 12, hy + 2, furLight);
+  // 头部阴影
+  rect(hx + 2, hy + 13, 10, 2, furDark);
+  px(hx + 1, hy + 12, furDark); px(hx + 12, hy + 12, furDark);
+
+  // ---- 耳朵 ----
+  if (breed.earType === 'big') {
+    px(hx - 1, hy - 2, fur); px(hx, hy - 3, fur); px(hx + 1, hy - 4, fur); px(hx + 1, hy - 3, fur);
+    px(hx + 2, hy - 5, fur); px(hx + 2, hy - 4, fur); px(hx + 2, hy - 3, fur);
+    px(hx + 16, hy - 2, fur); px(hx + 17, hy - 3, fur); px(hx + 18, hy - 4, fur); px(hx + 18, hy - 3, fur);
+    px(hx + 17, hy - 5, fur); px(hx + 17, hy - 4, fur); px(hx + 17, hy - 3, fur);
+    if (eTw !== 0) { px(hx + 2 + eTw, hy - 5, fur); px(hx + 2 + eTw, hy - 4, fur); px(hx + 17 - eTw, hy - 5, fur); px(hx + 17 - eTw, hy - 4, fur); }
+    px(hx, hy - 2, '#FFB6C1'); px(hx + 1, hy - 2, '#FFB6C1');
+    px(hx + 17, hy - 2, '#FFB6C1'); px(hx + 18, hy - 2, '#FFB6C1');
+  } else if (breed.earType === 'pointy') {
+    px(hx, hy - 1, fur); px(hx + 1, hy - 2, fur); px(hx + 1, hy - 1, fur);
+    px(hx + 2, hy - 3, fur); px(hx + 2, hy - 2, fur);
+    px(hx + 17, hy - 1, fur); px(hx + 18, hy - 2, fur); px(hx + 18, hy - 1, fur);
+    px(hx + 17, hy - 3, fur); px(hx + 17, hy - 2, fur);
+    if (eTw !== 0) { px(hx + 2 + eTw, hy - 3, fur); px(hx + 2 + eTw, hy - 2, fur); px(hx + 17 - eTw, hy - 3, fur); px(hx + 17 - eTw, hy - 2, fur); }
+    px(hx + 1, hy - 1, '#FFB6C1'); px(hx + 17, hy - 1, '#FFB6C1');
+  } else {
+    px(hx, hy - 1, fur); px(hx + 1, hy - 2, fur); px(hx + 1, hy - 1, fur); px(hx + 2, hy - 2, fur); px(hx + 3, hy - 3, fur);
+    px(hx + 17, hy - 1, fur); px(hx + 18, hy - 2, fur); px(hx + 18, hy - 1, fur); px(hx + 17, hy - 2, fur); px(hx + 16, hy - 3, fur);
+    px(hx + 2, hy - 3, fur); px(hx + 17, hy - 3, fur);
+    px(hx + 1, hy - 1, '#FFB6C1'); px(hx + 17, hy - 1, '#FFB6C1');
+  }
+
+  // ---- 脸颊红晕 (更大更粉) ----
+  px(hx + 1, hy + 8, '#FFB6C1'); px(hx + 2, hy + 8, '#FFB6C1'); px(hx + 1, hy + 9, '#FFB6C1'); px(hx + 2, hy + 9, '#FFB6C1');
+  px(hx + 16, hy + 8, '#FFB6C1'); px(hx + 17, hy + 8, '#FFB6C1'); px(hx + 16, hy + 9, '#FFB6C1'); px(hx + 17, hy + 9, '#FFB6C1');
+  px(hx + 2, hy + 10, '#FF9EB5'); px(hx + 16, hy + 10, '#FF9EB5');
+  px(hx + 1, hy + 10, '#FFB6C1'); px(hx + 17, hy + 10, '#FFB6C1');
+
+  // ---- 眼睛 (全新可爱风格: 圆润大眼) ----
+  var eyeWhite = '#FFFFFF';
+  var eyePupil = '#1A1A1A';
+  var eyeHighlight1 = '#FFFFFF';
+  var eyeHighlight2 = 'rgba(255,255,255,0.7)';
+  var leftEyeX = hx + 4, rightEyeX = hx + 11, eyeY = hy + 5;
+  var eyeW = 6, eyeH = 5;
+
+  switch (expr.eyes) {
+    case 'normal':
+      rect(leftEyeX, eyeY, eyeW, eyeH, eyeWhite);
+      rect(rightEyeX, eyeY, eyeW, eyeH, eyeWhite);
+      px(leftEyeX + 1, eyeY - 1, eyeWhite); px(leftEyeX + 4, eyeY - 1, eyeWhite);
+      px(rightEyeX + 1, eyeY - 1, eyeWhite); px(rightEyeX + 4, eyeY - 1, eyeWhite);
+      px(leftEyeX + 1, eyeY + 5, eyeWhite); px(leftEyeX + 4, eyeY + 5, eyeWhite);
+      px(rightEyeX + 1, eyeY + 5, eyeWhite); px(rightEyeX + 4, eyeY + 5, eyeWhite);
+      rect(leftEyeX + 1, eyeY + 1, 4, 4, eyePupil);
+      rect(rightEyeX + 1, eyeY + 1, 4, 4, eyePupil);
+      px(leftEyeX + 1, eyeY, eyeHighlight1); px(leftEyeX + 2, eyeY, eyeHighlight1);
+      px(leftEyeX + 1, eyeY + 1, eyeHighlight1);
+      px(rightEyeX + 1, eyeY, eyeHighlight1); px(rightEyeX + 2, eyeY, eyeHighlight1);
+      px(rightEyeX + 1, eyeY + 1, eyeHighlight1);
+      px(leftEyeX + 4, eyeY + 3, eyeHighlight2);
+      px(rightEyeX + 4, eyeY + 3, eyeHighlight2);
+      px(leftEyeX + 2, eyeY + 4, eye);
+      px(rightEyeX + 2, eyeY + 4, eye);
+      if (breed.heterochromia) { px(rightEyeX + 2, eyeY + 4, eye2); }
+      break;
+    case 'happy':
+      rect(leftEyeX, eyeY + 1, eyeW, 4, eyeWhite);
+      rect(rightEyeX, eyeY + 1, eyeW, 4, eyeWhite);
+      px(leftEyeX + 1, eyeY, eyeWhite); px(leftEyeX + 4, eyeY, eyeWhite);
+      px(rightEyeX + 1, eyeY, eyeWhite); px(rightEyeX + 4, eyeY, eyeWhite);
+      px(leftEyeX + 2, eyeY + 2, eyePupil); px(leftEyeX + 3, eyeY + 2, eyePupil);
+      px(rightEyeX + 2, eyeY + 2, eyePupil); px(rightEyeX + 3, eyeY + 2, eyePupil);
+      px(leftEyeX + 2, eyeY + 1, eyeHighlight1);
+      px(rightEyeX + 2, eyeY + 1, eyeHighlight1);
+      px(leftEyeX + 2, eyeY + 3, eye);
+      px(rightEyeX + 2, eyeY + 3, eye);
+      if (breed.heterochromia) { px(rightEyeX + 2, eyeY + 3, eye2); }
+      rect(leftEyeX, eyeY + 4, eyeW, 1, fur);
+      rect(rightEyeX, eyeY + 4, eyeW, 1, fur);
+      break;
+    case 'sad':
+      rect(leftEyeX, eyeY + 1, eyeW, 4, eyeWhite);
+      rect(rightEyeX, eyeY + 1, eyeW, 4, eyeWhite);
+      px(leftEyeX + 1, eyeY, eyeWhite); px(leftEyeX + 4, eyeY, eyeWhite);
+      px(rightEyeX + 1, eyeY, eyeWhite); px(rightEyeX + 4, eyeY, eyeWhite);
+      rect(leftEyeX + 2, eyeY + 2, 2, 2, eyePupil);
+      rect(rightEyeX + 2, eyeY + 2, 2, 2, eyePupil);
+      px(leftEyeX + 2, eyeY + 1, eyeHighlight1);
+      px(rightEyeX + 2, eyeY + 1, eyeHighlight1);
+      rect(leftEyeX, eyeY, eyeW, 1, fur);
+      rect(rightEyeX, eyeY, eyeW, 1, fur);
+      break;
+    case 'sleepy':
+      rect(leftEyeX, eyeY + 2, eyeW, 2, eyeWhite);
+      rect(rightEyeX, eyeY + 2, eyeW, 2, eyeWhite);
+      px(leftEyeX + 2, eyeY + 2, eyePupil); px(leftEyeX + 3, eyeY + 2, eyePupil);
+      px(rightEyeX + 2, eyeY + 2, eyePupil); px(rightEyeX + 3, eyeY + 2, eyePupil);
+      rect(leftEyeX, eyeY, eyeW, 2, fur);
+      rect(rightEyeX, eyeY, eyeW, 2, fur);
+      break;
+    case 'dazed':
+      rect(leftEyeX, eyeY + 1, eyeW, 3, eyeWhite);
+      rect(rightEyeX, eyeY + 1, eyeW, 3, eyeWhite);
+      px(leftEyeX + 2, eyeY + 3, eyePupil); px(leftEyeX + 3, eyeY + 3, eyePupil);
+      px(rightEyeX + 2, eyeY + 3, eyePupil); px(rightEyeX + 3, eyeY + 3, eyePupil);
+      rect(leftEyeX, eyeY, eyeW, 1, fur);
+      rect(rightEyeX, eyeY, eyeW, 1, fur);
+      break;
+    case 'star':
+      rect(leftEyeX, eyeY, eyeW, eyeH, '#FFF');
+      rect(rightEyeX, eyeY, eyeW, eyeH, '#FFF');
+      px(leftEyeX + 1, eyeY - 1, '#FFF'); px(leftEyeX + 4, eyeY - 1, '#FFF');
+      px(rightEyeX + 1, eyeY - 1, '#FFF'); px(rightEyeX + 4, eyeY - 1, '#FFF');
+      px(leftEyeX + 1, eyeY + 5, '#FFF'); px(leftEyeX + 4, eyeY + 5, '#FFF');
+      px(rightEyeX + 1, eyeY + 5, '#FFF'); px(rightEyeX + 4, eyeY + 5, '#FFF');
+      px(leftEyeX + 2, eyeY, '#FFD700'); px(leftEyeX + 3, eyeY, '#FFD700');
+      px(leftEyeX + 1, eyeY + 1, '#FFD700'); px(leftEyeX + 2, eyeY + 1, '#FFD700'); px(leftEyeX + 3, eyeY + 1, '#FFD700'); px(leftEyeX + 4, eyeY + 1, '#FFD700');
+      px(leftEyeX + 2, eyeY + 2, '#FFD700'); px(leftEyeX + 3, eyeY + 2, '#FFD700');
+      px(leftEyeX + 1, eyeY + 3, '#FFD700'); px(leftEyeX + 4, eyeY + 3, '#FFD700');
+      px(rightEyeX + 2, eyeY, '#FFD700'); px(rightEyeX + 3, eyeY, '#FFD700');
+      px(rightEyeX + 1, eyeY + 1, '#FFD700'); px(rightEyeX + 2, eyeY + 1, '#FFD700'); px(rightEyeX + 3, eyeY + 1, '#FFD700'); px(rightEyeX + 4, eyeY + 1, '#FFD700');
+      px(rightEyeX + 2, eyeY + 2, '#FFD700'); px(rightEyeX + 3, eyeY + 2, '#FFD700');
+      px(rightEyeX + 1, eyeY + 3, '#FFD700'); px(rightEyeX + 4, eyeY + 3, '#FFD700');
+      break;
+  }
+
+  // ---- 眉毛 ----
+  switch (expr.brows) {
+    case 'up':
+      px(hx + 3, hy + 3, furDarker); px(hx + 4, hy + 2, furDarker);
+      px(hx + 13, hy + 2, furDarker); px(hx + 14, hy + 3, furDarker);
+      break;
+    case 'down':
+      px(hx + 3, hy + 2, furDarker); px(hx + 4, hy + 3, furDarker);
+      px(hx + 13, hy + 3, furDarker); px(hx + 14, hy + 2, furDarker);
+      break;
+    default:
+      px(hx + 3, hy + 3, furDarker); px(hx + 4, hy + 3, furDarker);
+      px(hx + 13, hy + 3, furDarker); px(hx + 14, hy + 3, furDarker);
+      break;
+  }
+
+  // ---- 鼻子 (粉色小倒三角) ----
+  px(hx + 8, hy + 10, '#FFB6C1'); px(hx + 9, hy + 10, '#FFB6C1');
+  px(hx + 7, hy + 11, '#FFB6C1'); px(hx + 8, hy + 11, '#FFB6C1'); px(hx + 9, hy + 11, '#FFB6C1'); px(hx + 10, hy + 11, '#FFB6C1');
+  px(hx + 8, hy + 12, darken('#FFB6C1', 15)); px(hx + 9, hy + 12, darken('#FFB6C1', 15));
+
+  // ---- 嘴巴 (微笑弧度 + 小舌头) ----
+  switch (expr.mouth) {
+    case 'normal':
+      px(hx + 6, hy + 12, '#5D4037'); px(hx + 7, hy + 13, '#5D4037');
+      px(hx + 10, hy + 12, '#5D4037'); px(hx + 11, hy + 13, '#5D4037');
+      break;
+    case 'open':
+      rect(hx + 7, hy + 13, 4, 2, '#5D4037');
+      if (expr.tongue || mouthOpen) { px(hx + 8, hy + 14, '#FF6B8A'); px(hx + 9, hy + 14, '#FF6B8A'); }
+      break;
+    case 'sad':
+      px(hx + 6, hy + 13, '#5D4037'); px(hx + 7, hy + 13, '#5D4037');
+      px(hx + 10, hy + 13, '#5D4037'); px(hx + 11, hy + 13, '#5D4037');
+      px(hx + 8, hy + 14, '#5D4037'); px(hx + 9, hy + 14, '#5D4037');
+      break;
+    case 'happy':
+      px(hx + 6, hy + 12, '#5D4037'); px(hx + 7, hy + 12, '#FFFBF5');
+      px(hx + 8, hy + 12, '#FFFBF5'); px(hx + 9, hy + 12, '#FFFBF5');
+      px(hx + 10, hy + 12, '#5D4037'); px(hx + 11, hy + 12, '#5D4037');
+      px(hx + 8, hy + 13, '#FF6B8A'); px(hx + 9, hy + 13, '#FF6B8A');
+      break;
+  }
+
+  // ---- 胡须 (细曲线) ----
+  ctx.strokeStyle = '#A0806A';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo((hx + 2)*CELL, (hy + 9)*CELL+CELL/2); ctx.lineTo((hx - 4)*CELL, (hy + 7)*CELL+CELL/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo((hx + 2)*CELL, (hy + 11)*CELL+CELL/2); ctx.lineTo((hx - 5)*CELL, (hy + 11)*CELL+CELL/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo((hx + 2)*CELL, (hy + 13)*CELL+CELL/2); ctx.lineTo((hx - 3)*CELL, (hy + 14)*CELL+CELL/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo((hx + 16)*CELL, (hy + 9)*CELL+CELL/2); ctx.lineTo((hx + 22)*CELL, (hy + 7)*CELL+CELL/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo((hx + 16)*CELL, (hy + 11)*CELL+CELL/2); ctx.lineTo((hx + 23)*CELL, (hy + 11)*CELL+CELL/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo((hx + 16)*CELL, (hy + 13)*CELL+CELL/2); ctx.lineTo((hx + 21)*CELL, (hy + 14)*CELL+CELL/2); ctx.stroke();
+
+  // ---- 条纹 (身体背部) ----
+  if (breed.hasStripes) {
+    var stripeColor = darken(fur, 50);
+    rect(30, 22, 2, 3, stripeColor);
+    rect(35, 22, 2, 3, stripeColor);
+    rect(40, 22, 2, 3, stripeColor);
+    rect(45, 22, 2, 3, stripeColor);
+    px(hx + 4, hy, stripeColor); px(hx + 5, hy, stripeColor);
+    px(hx + 7, hy, stripeColor); px(hx + 8, hy, stripeColor);
+  }
+
+  // ---- 斑点 ----
+  if (breed.hasSpots) {
+    if (state.breed === 'calico') {
+      var orangeSpots = [[28,24],[33,23],[38,25],[43,24],[30,28]];
+      var blackSpots = [[31,26],[36,24],[41,27],[46,25]];
+      for (var si = 0; si < orangeSpots.length; si++) {
+        var sx = orangeSpots[si][0], sy = orangeSpots[si][1];
+        px(sx, sy, '#E67E22'); px(sx+1, sy, '#E67E22');
+      }
+      for (var si = 0; si < blackSpots.length; si++) {
+        var sx = blackSpots[si][0], sy = blackSpots[si][1];
+        px(sx, sy, '#2D2D2D'); px(sx+1, sy, '#2D2D2D');
+      }
+    } else {
+      var spotColor = '#2D2D2D';
+      var spots = [[28,24],[33,23],[38,25],[43,24],[30,28],[35,27],[40,26],[45,25]];
+      for (var si = 0; si < spots.length; si++) {
+        var sx = spots[si][0], sy = spots[si][1];
+        px(sx, sy, spotColor); px(sx+1, sy, spotColor);
+      }
+    }
+  }
+
+  // ---- 品种特殊绘制 (布偶猫面罩避开眼睛) ----
+  if (state.breed === 'tortie') {
+    var tortieSpots = [[29,25],[34,24],[39,26],[44,25],[31,28],[36,27],[41,26],[46,24]];
+    for (var ti = 0; ti < tortieSpots.length; ti++) {
+      var tx = tortieSpots[ti][0], ty = tortieSpots[ti][1];
+      px(tx, ty, '#8B4513'); px(tx+1, ty, '#8B4513');
+    }
+    var tortieLight = [[30,23],[35,25],[40,24],[45,26]];
+    for (var ti = 0; ti < tortieLight.length; ti++) {
+      var tx = tortieLight[ti][0], ty = tortieLight[ti][1];
+      px(tx, ty, '#D2691E'); px(tx+1, ty, '#D2691E');
+    }
+  }
+  if (state.breed === 'ragdoll') {
+    var maskColor = darken(fur, 40);
+    rect(hx + 3, hy + 1, 12, 3, maskColor);
+    px(hx + 1, hy + 4, maskColor); px(hx + 2, hy + 4, maskColor);
+    px(hx + 15, hy + 4, maskColor); px(hx + 16, hy + 4, maskColor);
+    px(hx + 1, hy + 5, maskColor); px(hx + 2, hy + 5, maskColor);
+    px(hx + 15, hy + 5, maskColor); px(hx + 16, hy + 5, maskColor);
+    rect(hx + 5, hy + 10, 8, 3, maskColor);
+    px(hx + 4, hy + 11, maskColor); px(hx + 13, hy + 11, maskColor);
+    px(hx + 4, hy + 12, maskColor); px(hx + 13, hy + 12, maskColor);
+    px(hx - 2, hy + 4, furLight); px(hx - 2, hy + 5, furLight);
+    px(hx + 19, hy + 4, furLight); px(hx + 19, hy + 5, furLight);
+    px(hx - 1, hy + 1, furLight); px(hx + 18, hy + 1, furLight);
+  }
+  if (state.breed === 'siamese') {
+    var pointColor = '#5D4037';
+    rect(hx + 3, hy + 1, 12, 3, pointColor);
+    px(hx + 1, hy + 4, pointColor); px(hx + 2, hy + 4, pointColor);
+    px(hx + 15, hy + 4, pointColor); px(hx + 16, hy + 4, pointColor);
+    px(hx + 1, hy + 5, pointColor); px(hx + 2, hy + 5, pointColor);
+    px(hx + 15, hy + 5, pointColor); px(hx + 16, hy + 5, pointColor);
+    rect(hx + 5, hy + 10, 8, 3, pointColor);
+    px(hx + 4, hy + 11, pointColor); px(hx + 13, hy + 11, pointColor);
+    px(hx + 4, hy + 12, pointColor); px(hx + 13, hy + 12, pointColor);
+    px(18, 37, pointColor); px(19, 37, pointColor);
+    px(23, 37, pointColor); px(24, 37, pointColor);
+    rect(50, 26, 4, 2, pointColor);
+    rect(53, 25, 2, 1, pointColor);
+  }
+  if (state.breed === 'british') {
+    var cheekColor = lighten(fur, 20);
+    px(hx - 2, hy + 6, cheekColor); px(hx - 2, hy + 7, cheekColor); px(hx - 2, hy + 8, cheekColor);
+    px(hx + 19, hy + 6, cheekColor); px(hx + 19, hy + 7, cheekColor); px(hx + 19, hy + 8, cheekColor);
+    px(hx - 2, hy + 9, fur); px(hx + 19, hy + 9, fur);
+    px(hx + 13, hy + 5, fur); px(hx + 13, hy + 6, fur);
+    px(51, 23, fur); px(51, 24, fur);
+  }
+  if (state.breed === 'american') {
+    var thickStripe = darken(fur, 60);
+    rect(30, 22, 3, 3, thickStripe);
+    rect(36, 22, 3, 3, thickStripe);
+    rect(42, 22, 3, 3, thickStripe);
+    rect(33, 26, 3, 2, thickStripe);
+    rect(39, 26, 3, 2, thickStripe);
+    rect(45, 26, 3, 2, thickStripe);
+  }
+  if (state.breed === 'sphynx') {
+    var wrinkleColor = darken(fur, 25);
+    rect(28, 26, 4, 1, wrinkleColor);
+    rect(34, 25, 4, 1, wrinkleColor);
+    rect(40, 26, 4, 1, wrinkleColor);
+    rect(46, 25, 4, 1, wrinkleColor);
+    px(30, 28, wrinkleColor); px(36, 28, wrinkleColor);
+    px(42, 28, wrinkleColor); px(48, 28, wrinkleColor);
+    ctx.clearRect(7*CELL, 24*CELL+CELL/2-2, 7*CELL, 9*CELL);
+    ctx.clearRect(26*CELL, 24*CELL+CELL/2-2, 7*CELL, 9*CELL);
+    rect(26, 22, 24, 12, fur);
+    rect(28, 22, 20, 2, furLight);
+    rect(27, 23, 22, 1, furLight);
+    rect(27, 32, 22, 2, furDark);
+    rect(28, 31, 20, 1, furDark);
+  }
+  if (state.breed === 'goldensh') {
+    var tipColor = '#8B6914';
+    rect(28, 22, 20, 2, tipColor);
+    px(27, 23, tipColor); px(48, 23, tipColor);
+    px(26, 24, tipColor); px(49, 24, tipColor);
+    rect(48, 26, 7, 4, fur);
+    rect(49, 25, 5, 2, lighten(fur, 30));
+    px(48, 25, lighten(fur, 30));
+    rect(52, 24, 3, 1, lighten(fur, 30));
+  }
+
+  // ---- 黑猫发光 ----
+  if (state.breed === 'black') {
+    ctx.shadowColor = '#FFD700';
+    ctx.shadowBlur = 10;
+    rect(hx + 4, hy + 5, 6, 5, 'transparent');
+    rect(hx + 11, hy + 5, 6, 5, 'transparent');
+    ctx.shadowBlur = 0;
+  }
+}
+
+// ==================== 待机动画 ====================
+function updateAnimation(delta) {
+  animElapsed += delta;
+  breathOffset = Math.sin(animElapsed * Math.PI / 1200) * 0.4;
+  breathOffset = Math.round(breathOffset);
+  if (Math.floor(animElapsed / 4000) > Math.floor((animElapsed - delta) / 4000)) {
+    earTwitch = 1;
+    setTimeout(function() { earTwitch = 0; }, 120);
+  }
+  tailSway = Math.sin(animElapsed * Math.PI / 2500) * 0.5;
+  tailSway = Math.round(tailSway);
+}
+
+// ==================== 粒子系统 ====================
+function spawnParticles(type, x, y) {
+  var count = 12;
+  var colors = type === 'play' ? ['#FFB6C1','#FF69B4','#FF1493','#FFC0CB'] : ['#FFD700','#FFA500','#FF6347','#FF4500'];
+  var emoji = type === 'play' ? '❤️' : '🐟';
+  if (type === 'autoHappy') {
+    colors = ['#FFB6C1','#FF69B4','#FFD700','#FFA500'];
+    emoji = Math.random() > 0.5 ? '❤️' : '⭐';
+    count = 3;
+  }
+  for (var i = 0; i < count; i++) {
+    particles.push({
+      x: x || window.innerWidth/2, y: y || window.innerHeight/2,
+      vx: (Math.random()-0.5)*6, vy: -Math.random()*8-2,
+      life: 1, decay: 0.015+Math.random()*0.015,
+      size: 8+Math.random()*12, color: colors[Math.floor(Math.random()*colors.length)],
+      emoji: emoji, type: 'emoji'
+    });
+  }
+}
+function updateParticles() {
+  for (var i = particles.length-1; i >= 0; i--) {
+    var p = particles[i];
+    p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life -= p.decay;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+function drawParticles() {
+  pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+  for (var i = 0; i < particles.length; i++) {
+    var p = particles[i];
+    pCtx.globalAlpha = p.life;
+    pCtx.font = p.size + 'px sans-serif';
+    pCtx.textAlign = 'center';
+    pCtx.textBaseline = 'middle';
+    pCtx.fillText(p.emoji, p.x, p.y);
+  }
+  pCtx.globalAlpha = 1;
+}
+
+// ==================== 开心自动粒子 ====================
+var happyParticleTimer = 0;
+function updateHappyParticles(delta) {
+  if (state.happiness > 70) {
+    happyParticleTimer += delta;
+    if (happyParticleTimer > 1500) {
+      happyParticleTimer = 0;
+      var rect = canvas.getBoundingClientRect();
+      spawnParticles('autoHappy', rect.left + rect.width/2, rect.top + rect.height/3);
+    }
+  } else {
+    happyParticleTimer = 0;
+  }
+}
+
+// ==================== UI 更新 ====================
+function updateUI() {
+  hungerBar.style.width = state.hunger + '%';
+  happinessBar.style.width = state.happiness + '%';
+  energyBar.style.width = state.energy + '%';
+  hungerValue.textContent = state.hunger;
+  happinessValue.textContent = state.happiness;
+  energyValue.textContent = state.energy;
+  moodText.textContent = getExpression().mood;
+  drawCat();
+  saveState();
+}
+
+// ==================== 操作函数 (带动作反馈) ====================
+function feed() {
+  state.hunger = Math.max(0, state.hunger-15);
+  state.happiness = Math.min(100, state.happiness+5);
+  setAction('feed', 300);
+  updateUI();
+  playMeow('hungry');
+}
+function playAction() {
+  state.happiness = Math.min(100, state.happiness+12);
+  state.energy = Math.max(0, state.energy-10);
+  setAction('play', 400);
+  updateUI();
+  playMeow('happy');
+  spawnParticles('play');
+}
+function sleepAction() {
+  state.energy = Math.min(100, state.energy+20);
+  state.hunger = Math.min(100, state.hunger+3);
+  setAction('sleep', 2000);
+  updateUI();
+  playMeow('content');
+}
+function yarnAction() {
+  state.happiness = Math.min(100, state.happiness+5);
+  state.energy = Math.max(0, state.energy-3);
+  setAction('yarn', 500);
+  updateUI();
+  playMeow('happy');
+  spawnParticles('play');
+}
+function herbAction() {
+  if (state.herbActive) return;
+  state.happiness = Math.min(100, state.happiness+8);
+  state.energy = Math.max(0, state.energy-2);
+  state.herbActive = true;
+  setAction('herb', 5000);
+  updateUI();
+  playMeow('content');
+  if (state.herbTimer) clearTimeout(state.herbTimer);
+  state.herbTimer = setTimeout(function() { state.herbActive = false; updateUI(); }, 5000);
+  spawnParticles('play');
+}
+
+// ==================== 外出工作模式 ====================
+function enterWorkMode() {
+  state.workMode = true; workIndicator.classList.add('show');
+  btnWork.style.display = 'none'; btnBack.style.display = 'flex';
+  if (decayTimer) clearInterval(decayTimer);
+  decayTimer = setInterval(function() { state.hunger = Math.min(100, state.hunger+2); state.happiness = Math.max(0, state.happiness-1); state.energy = Math.max(0, state.energy-1); updateUI(); }, 20000);
+  saveState();
+}
+function exitWorkMode() {
+  state.workMode = false; workIndicator.classList.remove('show');
+  btnWork.style.display = 'flex'; btnBack.style.display = 'none';
+  if (decayTimer) clearInterval(decayTimer);
+  decayTimer = setInterval(function() { state.hunger = Math.min(100, state.hunger+2); state.happiness = Math.max(0, state.happiness-1); state.energy = Math.max(0, state.energy-1); updateUI(); }, 10000);
+  saveState();
+}
+
+// ==================== 分享 ====================
+function generateShareText() {
+  var breed = BREED_CONFIG[state.breed];
+  var moodDesc = getExpression().mood.replace(/[^\u4e00-\u9fa5a-zA-Z]/g, '').trim() || '心情不错';
+  return '我家的 ' + state.catName + '（' + breed.name + '）今天' + moodDesc + '，毛色是 ' + state.furColor + '，眼睛是 ' + state.eyeColor + '。饥饿度 ' + state.hunger + '，快乐度 ' + state.happiness + '，精力值 ' + state.energy + '。快来猫仓领养一只吧！🐱';
+}
+function showShareCard() {
+  shareCardText.textContent = generateShareText();
+  shareCardEmoji.textContent = ({orange:'🐈', black:'🐈⬛', tabby:'🐅', white:'🐱', cow:'🐄', ragdoll:'🐱', siamese:'🐱', british:'🐱', american:'🐱', calico:'🐱', tortie:'🐱', sphynx:'🐱', goldensh:'🐱'})[state.breed] || '🐱';
+  shareOverlay.classList.add('show');
+}
+
+// ==================== 音频 ====================
+function initAudio() { if (audioCtx) return; try { audioCtx = new(window.AudioContext||window.webkitAudioContext)(); } catch(e) {} }
+function playMeow(type) {
+  if (!audioCtx||!audioActivated) return;
+  try {
+    var now = audioCtx.currentTime;
+    // 主振荡器 - 模拟"喵"声的频率轮廓（低→高→低）
+    var osc = audioCtx.createOscillator();
+    osc.type = 'sine';
+    // 谐波振荡器 - 增加泛音使声音更丰满
+    var osc2 = audioCtx.createOscillator();
+    osc2.type = 'sine';
+    // 颤音LFO - 频率调制产生自然颤音
+    var lfo = audioCtx.createOscillator();
+    lfo.type = 'sine';
+    var lfoGain = audioCtx.createGain();
+    // 主增益
+    var gain = audioCtx.createGain();
+    // 谐波增益
+    var gain2 = audioCtx.createGain();
+
+    if (type === 'hungry') {
+      // 饥饿：哀怨的"喵呜~" - 较长，频率起伏大
+      // 主频：400→750→350Hz，带颤音
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.linearRampToValueAtTime(750, now+0.12);
+      osc.frequency.linearRampToValueAtTime(600, now+0.25);
+      osc.frequency.exponentialRampToValueAtTime(350, now+0.55);
+      // 谐波（3倍频）
+      osc2.frequency.setValueAtTime(1200, now);
+      osc2.frequency.linearRampToValueAtTime(2250, now+0.12);
+      osc2.frequency.linearRampToValueAtTime(1800, now+0.25);
+      osc2.frequency.exponentialRampToValueAtTime(1050, now+0.55);
+      gain2.gain.setValueAtTime(0.06, now);
+      gain2.gain.linearRampToValueAtTime(0.1, now+0.1);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now+0.5);
+      // 颤音LFO：20Hz，调制深度40Hz
+      lfo.frequency.setValueAtTime(20, now);
+      lfoGain.gain.setValueAtTime(40, now);
+      // 包络：渐入→保持→渐出
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.3, now+0.04);
+      gain.gain.setValueAtTime(0.25, now+0.2);
+      gain.gain.exponentialRampToValueAtTime(0.01, now+0.6);
+    } else if (type === 'happy') {
+      // 开心：短促明亮的"喵！" - 高频，快速
+      osc.frequency.setValueAtTime(600, now);
+      osc.frequency.linearRampToValueAtTime(900, now+0.08);
+      osc.frequency.linearRampToValueAtTime(700, now+0.18);
+      osc.frequency.exponentialRampToValueAtTime(500, now+0.35);
+      // 谐波（2.5倍频）
+      osc2.frequency.setValueAtTime(1500, now);
+      osc2.frequency.linearRampToValueAtTime(2250, now+0.08);
+      osc2.frequency.linearRampToValueAtTime(1750, now+0.18);
+      osc2.frequency.exponentialRampToValueAtTime(1250, now+0.35);
+      gain2.gain.setValueAtTime(0.08, now);
+      gain2.gain.linearRampToValueAtTime(0.12, now+0.05);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now+0.3);
+      // 颤音LFO：25Hz，调制深度50Hz
+      lfo.frequency.setValueAtTime(25, now);
+      lfoGain.gain.setValueAtTime(50, now);
+      // 包络：快速起音，短促
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.28, now+0.03);
+      gain.gain.exponentialRampToValueAtTime(0.01, now+0.38);
+    } else if (type === 'content') {
+      // 满足：低沉的"咕噜喵" - 低频，带呼噜质感
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(250, now);
+      osc.frequency.linearRampToValueAtTime(450, now+0.1);
+      osc.frequency.linearRampToValueAtTime(350, now+0.25);
+      osc.frequency.exponentialRampToValueAtTime(200, now+0.5);
+      // 谐波（4倍频，三角波泛音更丰富）
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(1000, now);
+      osc2.frequency.linearRampToValueAtTime(1800, now+0.1);
+      osc2.frequency.linearRampToValueAtTime(1400, now+0.25);
+      osc2.frequency.exponentialRampToValueAtTime(800, now+0.5);
+      gain2.gain.setValueAtTime(0.04, now);
+      gain2.gain.linearRampToValueAtTime(0.07, now+0.08);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now+0.45);
+      // 颤音LFO：12Hz，调制深度25Hz（更慢的颤音，像呼噜）
+      lfo.frequency.setValueAtTime(12, now);
+      lfoGain.gain.setValueAtTime(25, now);
+      // 包络：柔和起音，较长
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.15, now+0.06);
+      gain.gain.setValueAtTime(0.12, now+0.2);
+      gain.gain.exponentialRampToValueAtTime(0.01, now+0.55);
+    } else {
+      // 默认：普通"咪~" - 中等长度
+      osc.frequency.setValueAtTime(500, now);
+      osc.frequency.linearRampToValueAtTime(800, now+0.1);
+      osc.frequency.linearRampToValueAtTime(650, now+0.2);
+      osc.frequency.exponentialRampToValueAtTime(400, now+0.45);
+      // 谐波（2.8倍频）
+      osc2.frequency.setValueAtTime(1400, now);
+      osc2.frequency.linearRampToValueAtTime(2240, now+0.1);
+      osc2.frequency.linearRampToValueAtTime(1820, now+0.2);
+      osc2.frequency.exponentialRampToValueAtTime(1120, now+0.45);
+      gain2.gain.setValueAtTime(0.06, now);
+      gain2.gain.linearRampToValueAtTime(0.09, now+0.06);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now+0.4);
+      // 颤音LFO：18Hz，调制深度35Hz
+      lfo.frequency.setValueAtTime(18, now);
+      lfoGain.gain.setValueAtTime(35, now);
+      // 包络
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.25, now+0.04);
+      gain.gain.exponentialRampToValueAtTime(0.01, now+0.5);
+    }
+    // 连接LFO→主频调制
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+    lfoGain.connect(osc2.frequency);
+    lfo.start(now);
+    lfo.stop(now+0.6);
+    // 连接音频图
+    osc.connect(gain);
+    osc2.connect(gain2);
+    gain.connect(audioCtx.destination);
+    gain2.connect(audioCtx.destination);
+    osc.start(now);
+    osc2.start(now);
+    osc.stop(now+0.6);
+    osc2.stop(now+0.6);
+  } catch(e) {}
+}
+function activateAudio() {
+  initAudio();
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume().then(function() { audioActivated = true; audioHint.textContent = '🔊 喵声已激活！'; audioHint.classList.add('activated'); playMeow('happy'); }).catch(function(){});
+  } else if (audioCtx) { audioActivated = true; audioHint.textContent = '🔊 喵声已激活！'; audioHint.classList.add('activated'); playMeow('happy'); }
+}
+
+// ==================== 定时器 ====================
+function startDecayTimer() {
+  if (decayTimer) clearInterval(decayTimer);
+  decayTimer = setInterval(function() { state.hunger = Math.min(100, state.hunger+2); state.happiness = Math.max(0, state.happiness-1); state.energy = Math.max(0, state.energy-1); updateUI(); }, state.workMode ? 20000 : 10000);
+}
+
+// ==================== 长按连喂 ====================
+var longPressTimer = null, longPressCount = 0;
+function setupLongPress(btn, action) {
+  btn.addEventListener('pointerdown', function() { longPressCount = 0; longPressTimer = setInterval(function() { longPressCount++; if (longPressCount <= 3) action(); else clearInterval(longPressTimer); }, 200); });
+  btn.addEventListener('pointerup', function() { if (longPressTimer) { clearInterval(longPressTimer); longPressTimer = null; } });
+  btn.addEventListener('pointerleave', function() { if (longPressTimer) { clearInterval(longPressTimer); longPressTimer = null; } });
+}
+
+// ==================== 思念日记 ====================
+function loadDiary() {
+  try {
+    var today = new Date().toISOString().split('T')[0];
+    diaryDate.textContent = '📅 ' + today;
+    var diaries = JSON.parse(localStorage.getItem('catDiary') || '{}');
+    diaryText.value = diaries[today] || '';
+  } catch(e) { diaryText.value = ''; }
+}
+function saveDiary() {
+  try {
+    var today = new Date().toISOString().split('T')[0];
+    var diaries = JSON.parse(localStorage.getItem('catDiary') || '{}');
+    diaries[today] = diaryText.value;
+    localStorage.setItem('catDiary', JSON.stringify(diaries));
+    diarySave.textContent = '✅ 已保存';
+    setTimeout(function() { diarySave.textContent = '💾 保存'; }, 1500);
+  } catch(e) {}
+}
+function shareDiary() {
+  var text = diaryText.value.trim();
+  if (!text) { diaryShare.textContent = '📝 先写点内容'; setTimeout(function() { diaryShare.textContent = '📮 分享心情'; }, 1500); return; }
+  shareCardText.textContent = '📖 今日思念日记\n\n' + text + '\n\n—— 来自' + state.catName + '的猫仓';
+  shareCardEmoji.textContent = '📮';
+  shareOverlay.classList.add('show');
+}
+
+// ==================== 持久化 ====================
+function saveState() {
+  try {
+    var save = {
+      breed: state.breed, furColor: state.furColor, eyeColor: state.eyeColor, eyeColor2: state.eyeColor2,
+      hunger: state.hunger, happiness: state.happiness, energy: state.energy,
+      workMode: state.workMode, herbActive: state.herbActive,
+      catName: state.catName,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('catState', JSON.stringify(save));
+  } catch(e) {}
+}
+function loadState() {
+  try {
+    var raw = localStorage.getItem('catState');
+    if (!raw) return false;
+    var save = JSON.parse(raw);
+    state.breed = save.breed || 'orange';
+    state.furColor = save.furColor || BREED_CONFIG[state.breed].defaultFur;
+    state.eyeColor = save.eyeColor || BREED_CONFIG[state.breed].defaultEye;
+    state.eyeColor2 = save.eyeColor2 || null;
+    state.hunger = save.hunger || 50;
+    state.happiness = save.happiness || 50;
+    state.energy = save.energy || 50;
+    state.workMode = save.workMode || false;
+    state.herbActive = save.herbActive || false;
+    state.catName = save.catName || '咪咪';
+    state.lastTimestamp = save.timestamp || Date.now();
+    return true;
+  } catch(e) { return false; }
+}
+function recoverOffline() {
+  if (!state.lastTimestamp) return;
+  var elapsed = Math.floor((Date.now() - state.lastTimestamp) / 1000);
+  if (elapsed < 10) return;
+  var cycles = Math.floor(elapsed / 10);
+  var hungerGain = Math.min(2 * cycles, 40);
+  var happinessLoss = Math.min(1 * cycles, 20);
+  var energyLoss = Math.min(1 * cycles, 20);
+  state.hunger = Math.min(100, state.hunger + hungerGain);
+  state.happiness = Math.max(0, state.happiness - happinessLoss);
+  state.energy = Math.max(0, state.energy - energyLoss);
+  if (cycles > 0) {
+    var mins = Math.floor(elapsed / 60);
+    offlineNotice.textContent = '⏰ 你离开了 ' + mins + ' 分钟，' + state.catName + '有点想你…';
+    setTimeout(function() { offlineNotice.textContent = ''; }, 4000);
+  }
+}
+
+// ==================== 事件绑定 ====================
+btnFeed.addEventListener('click', feed);
+btnPlay.addEventListener('click', playAction);
+btnSleep.addEventListener('click', sleepAction);
+btnYarn.addEventListener('click', yarnAction);
+btnHerb.addEventListener('click', herbAction);
+btnWork.addEventListener('click', enterWorkMode);
+btnBack.addEventListener('click', exitWorkMode);
+btnShare.addEventListener('click', showShareCard);
+setupLongPress(btnFeed, feed);
+
+panelToggle.addEventListener('click', function() { panelBody.classList.toggle('open'); panelArrow.classList.toggle('open'); });
+diaryToggle.addEventListener('click', function() { var isOpen = diaryBody.classList.contains('open'); diaryBody.classList.toggle('open'); diaryArrow.classList.toggle('open'); if (!isOpen) loadDiary(); });
+
+breedSelect.addEventListener('change', function() {
+  var breed = this.value, config = BREED_CONFIG[breed];
+  state.breed = breed; state.furColor = config.defaultFur; state.eyeColor = config.defaultEye;
+  furColorInput.value = config.defaultFur; eyeColorInput.value = config.defaultEye;
+  if (config.heterochromia) { heterochromiaRow.style.display = 'flex'; state.eyeColor2 = eyeColor2Input.value; }
+  else { heterochromiaRow.style.display = 'none'; state.eyeColor2 = state.eyeColor; }
+  updateUI();
+});
+furColorInput.addEventListener('input', function() { state.furColor = this.value; updateUI(); });
+eyeColorInput.addEventListener('input', function() { state.eyeColor = this.value; updateUI(); });
+eyeColor2Input.addEventListener('input', function() { state.eyeColor2 = this.value; updateUI(); });
+
+diarySave.addEventListener('click', saveDiary);
+diaryShare.addEventListener('click', shareDiary);
+closeShareCard.addEventListener('click', function() { shareOverlay.classList.remove('show'); });
+shareOverlay.addEventListener('click', function(e) { if (e.target === this) shareOverlay.classList.remove('show'); });
+
+// ==================== 猫咪改名 ====================
+function updateCatNameDisplay() {
+  catNameDisplay.textContent = state.catName;
+  subtitleText.textContent = '陪伴你的' + state.catName;
+  diaryText.placeholder = '今天想对' + state.catName + '说什么…';
+}
+function renameCat() {
+  var newName = prompt('给猫咪起个新名字吧！', state.catName);
+  if (newName && newName.trim().length > 0 && newName.trim() !== state.catName) {
+    state.catName = newName.trim();
+    updateCatNameDisplay();
+    saveState();
+  }
+}
+catNameDisplay.addEventListener('click', renameCat);
+renameBtn.addEventListener('click', function(e) { e.stopPropagation(); renameCat(); });
+
+document.addEventListener('click', function() { if (!audioActivated) activateAudio(); }, { once: true });
+audioHint.addEventListener('click', function(e) { e.stopPropagation(); if (!audioActivated) activateAudio(); });
+
+// ==================== 动画循环 ====================
+function gameLoop(timestamp) {
+  if (!lastAnimTime) lastAnimTime = timestamp;
+  var delta = timestamp - lastAnimTime;
+  lastAnimTime = timestamp;
+  if (delta > 100) delta = 16;
+  updateAnimation(delta);
+  updateHappyParticles(delta);
+  updateParticles();
+  drawParticles();
+  drawCat();
+  requestAnimationFrame(gameLoop);
+}
+
+// ==================== 粒子画布尺寸 ====================
+function resizeParticleCanvas() { pCanvas.width = window.innerWidth; pCanvas.height = window.innerHeight; }
+window.addEventListener('resize', resizeParticleCanvas);
+resizeParticleCanvas();
+
+// ==================== 初始化 ====================
+function init() {
+  var hasSave = loadState();
+  if (hasSave) recoverOffline();
+  breedSelect.value = state.breed;
+  furColorInput.value = state.furColor;
+  eyeColorInput.value = state.eyeColor;
+  var config = BREED_CONFIG[state.breed];
+  if (config.heterochromia) { heterochromiaRow.style.display = 'flex'; eyeColor2Input.value = state.eyeColor2 || state.eyeColor; }
+  updateCatNameDisplay();
+  updateUI();
+  startDecayTimer();
+  requestAnimationFrame(gameLoop);
+  console.log('🐱 猫仓已启动！');
+}
+init();
+</script>
+</body>
+</html>
